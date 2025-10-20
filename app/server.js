@@ -2,47 +2,44 @@
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
-import cors from "cors";
 
 const app = express();
-
-// Autoriser les requêtes depuis Roblox
-app.use(cors());
 app.use(bodyParser.json());
 
-// 🔒 Le token Hugging Face lu depuis les variables d'environnement
-const HF_TOKEN = process.env.HF_TOKEN;
-const MODEL = "gpt-neo-2.7B";
+// 🔒 Variables d'environnement
+const HF_TOKEN = process.env.HF_TOKEN;             // Ton token Hugging Face
+const HF_SPACE_URL = process.env.HF_SPACE_URL;     // URL du Space Hugging Face ou API Inference
 
-// Route pour la conversation
 app.post("/chat", async (req, res) => {
-    try {
-        const prompt = req.body.message;
-        if (!prompt || prompt.trim() === "") {
-            return res.json({ reply: "Désolé, je n'ai pas compris." });
-        }
+  try {
+    const playerMessage = req.body.message;
 
-        const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${HF_TOKEN}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ inputs: prompt })
-        });
+    // Prompt en français, style "papa affectueux"
+    const prompt = `Tu es Sebastian, un papa affectueux. Réponds en français de manière chaleureuse. Joueur dit : "${playerMessage}"`;
 
-        const data = await response.json();
+    const response = await fetch(HF_SPACE_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${HF_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ inputs: prompt })
+    });
 
-        // Hugging Face peut renvoyer plusieurs formats selon le modèle
-        const reply = data[0]?.generated_text || "Désolé, je n'ai pas compris.";
-        res.json({ reply });
+    const data = await response.json();
+    console.log("Réponse brute Hugging Face :", data);
 
-    } catch (err) {
-        console.error("Erreur serveur :", err);
-        res.json({ reply: "Erreur serveur. Essaie plus tard." });
-    }
+    // Adapter selon le format du modèle
+    const reply = data[0]?.generated_text 
+                  || data?.data?.[0]?.generated_text
+                  || "Désolé, je n'ai pas compris.";
+
+    res.json({ reply });
+  } catch (err) {
+    console.error(err);
+    res.json({ reply: "Erreur serveur." });
+  }
 });
 
-// Serveur écoute sur le port fourni par Render ou 3000 localement
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Serveur Hugging Face prêt sur le port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Serveur Hugging Face prêt sur http://localhost:${PORT}`));
