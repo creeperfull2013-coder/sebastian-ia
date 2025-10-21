@@ -1,4 +1,3 @@
-// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -12,8 +11,9 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit : Lucie-7B-Instruct
-const MODEL = "TheBloke/Lucie-7B-Instruct-GPTQ";
+// 🔹 Modèle français gratuit et public
+// Ce modèle multilingue peut répondre en français
+const MODEL = "bigscience/bloomz-7b1-mt";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -22,7 +22,7 @@ app.post("/chat", async (req, res) => {
     console.log("💬 Message reçu :", userMessage);
 
     const prompt = `
-Tu es Sebastian Solace, un père protecteur et empathique.
+Tu es **Sebastian Solace**, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
 Message du joueur : "${userMessage}"
@@ -31,6 +31,7 @@ Réponds-lui comme un père bienveillant.
 
     console.log("💡 Prompt généré :", prompt);
 
+    // Envoi au modèle Hugging Face
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
@@ -56,10 +57,10 @@ Réponds-lui comme un père bienveillant.
       return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
-    // ✅ Extraction du texte généré (adapté pour Lucie-7B-Instruct)
+    // Extraction du texte généré
     let reply = "Désolé, je n'ai pas compris.";
-    if (data?.generated_text) {
-      reply = data.generated_text.replace(prompt, "").trim();
+    if (Array.isArray(data) && data[0]?.generated_text) {
+      reply = data[0].generated_text.replace(prompt, "").trim();
     }
 
     console.log("✅ Réponse générée :", reply);
