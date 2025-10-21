@@ -5,22 +5,30 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
+// 🔒 Ton token Hugging Face depuis Render
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-const MODEL = "microsoft/DialoGPT-medium"; // modèle simple et stable
+// 🔹 Modèle français (Zephyr ou Mixtral)
+const MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1";
 
+// POST /chat
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "Bonjour";
+    console.log("💬 Message reçu :", userMessage);
 
-    const prompt = `Tu es Sebastian Solace, un père protecteur et doux. Parle toujours en français.
+    const prompt = `
+Tu es **Sebastian Solace**, un père protecteur et empathique.
+Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
+Tu parles toujours en français, avec douceur et chaleur.
 Message du joueur : "${userMessage}"
-Réponds-lui avec tendresse.`;
+Réponds-lui comme un père bienveillant.
+`;
 
-    console.log("💬 Prompt envoyé :", prompt);
+    console.log("💡 Prompt généré :", prompt);
 
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
@@ -34,33 +42,33 @@ Réponds-lui avec tendresse.`;
       }),
     });
 
-    console.log("📡 Status HTTP HuggingFace:", response.status);
+    console.log("📡 Status HTTP HuggingFace :", response.status);
     const text = await response.text();
-    console.log("📄 Réponse brute :", text);
+    console.log("📄 Body brut HuggingFace :", text);
 
-    let reply = "Désolé, je n'ai pas compris.";
-
+    let data;
     try {
-      const data = JSON.parse(text);
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error("❌ Erreur parsing JSON HuggingFace :", err);
+      return res.json({ reply: "Erreur serveur (JSON)." });
+    }
 
-      // différents formats possibles selon le modèle
-      if (Array.isArray(data) && data[0]?.generated_text) {
-        reply = data[0].generated_text.replace(prompt, "").trim();
-      } else if (data?.generated_text) {
-        reply = data.generated_text.trim();
-      } else if (typeof data === "string") {
-        reply = data.trim();
-      }
-    } catch (e) {
-      console.error("⚠️ Erreur parsing JSON :", e);
+    // Extraction du texte généré
+    let reply = "Désolé, je n'ai pas compris.";
+    if (Array.isArray(data) && data[0]?.generated_text) {
+      reply = data[0].generated_text.replace(prompt, "").trim();
     }
 
     console.log("✅ Réponse générée :", reply);
     res.json({ reply });
+
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
-    res.json({ reply: "Erreur serveur (exception)." });
+    res.json({ reply: "Erreur serveur." });
   }
 });
 
-app.listen(3000, () => console.log("✅ Serveur Sebastian prêt sur le port 3000"));
+// 🔔 Render impose d'écouter sur process.env.PORT
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Serveur Sebastian prêt sur le port ${PORT}`));
