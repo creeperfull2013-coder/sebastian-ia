@@ -12,8 +12,8 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit sur Hugging Face
-const MODEL = "HuggingFaceH4/starchat-alpha";
+// 🔹 Modèle français gratuit (OpenAssistant)
+const MODEL = "OpenAssistant/oasst-sft-1-pythia-12b";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -57,8 +57,8 @@ Réponds-lui comme un père bienveillant.
 
     // Extraction du texte généré
     let reply = "Désolé, je n'ai pas compris.";
-    if (data && data.hasOwnProperty("generated_text")) {
-      reply = data.generated_text.replace(prompt, "").trim();
+    if (Array.isArray(data) && data[0]?.generated_text) {
+      reply = data[0].generated_text.replace(prompt, "").trim();
     }
 
     console.log("✅ Réponse générée :", reply);
