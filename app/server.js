@@ -2,22 +2,24 @@
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
+import cors from "cors";
 
 const app = express();
+app.use(cors());
 app.use(bodyParser.json());
 
-// 🔒 Variables d'environnement
-const HF_TOKEN = process.env.HF_TOKEN;             // Ton token Hugging Face
-const HF_SPACE_URL = process.env.HF_SPACE_URL;     // URL du Space Hugging Face ou API Inference
+// 🔒 Token Hugging Face depuis les variables d'environnement
+const HF_TOKEN = process.env.HF_TOKEN;
+if (!HF_TOKEN) {
+  console.error("❌ HF_TOKEN non défini. Ajoutez-le dans Render > Environment.");
+}
 
-app.post("/chat", async (req, res) => {
+const MODEL = "gpt-neo-2.7B"; // tu peux changer pour un autre modèle si besoin
+
+// Fonction pour générer la réponse IA
+async function getAIResponse(prompt) {
   try {
-    const playerMessage = req.body.message;
-
-    // Prompt en français, style "papa affectueux"
-    const prompt = `Tu es Sebastian, un papa affectueux. Réponds en français de manière chaleureuse. Joueur dit : "${playerMessage}"`;
-
-    const response = await fetch(HF_SPACE_URL, {
+    const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${HF_TOKEN}`,
@@ -27,19 +29,29 @@ app.post("/chat", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log("Réponse brute Hugging Face :", data);
 
-    // Adapter selon le format du modèle
-    const reply = data[0]?.generated_text 
-                  || data?.data?.[0]?.generated_text
-                  || "Désolé, je n'ai pas compris.";
+    // Vérifie si le modèle renvoie du texte
+    if (data.error) {
+      console.error("Hugging Face API Error:", data.error);
+      return "Désolé, je n'ai pas compris.";
+    }
 
-    res.json({ reply });
+    return data[0]?.generated_text || "Désolé, je n'ai pas compris.";
   } catch (err) {
-    console.error(err);
-    res.json({ reply: "Erreur serveur." });
+    console.error("Erreur serveur:", err);
+    return "Erreur serveur.";
   }
+}
+
+// Endpoint POST /chat
+app.post("/chat", async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.json({ reply: "Erreur : message vide." });
+
+  const reply = await getAIResponse(message);
+  res.json({ reply });
 });
 
+// Serveur prêt
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Serveur Hugging Face prêt sur http://localhost:${PORT}`));
