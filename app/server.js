@@ -11,8 +11,8 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français (Zephyr ou Mixtral)
-const MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1";
+// 🔹 Modèle français gratuit
+const MODEL = "OpenLLM-France/Lucie-7B-Instruct";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
