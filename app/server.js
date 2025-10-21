@@ -1,3 +1,4 @@
+// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -10,14 +11,13 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-const MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1";
+// 🧠 Modèle accessible gratuitement
+const MODEL = "microsoft/DialoGPT-medium";
 
-// POST /chat
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "Bonjour";
 
-    // Prompt pour Sebastian
     const prompt = `
 Tu es **Sebastian Solace**, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
@@ -36,12 +36,11 @@ Réponds-lui comme un père bienveillant.
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 100, temperature: 0.7 },
+        parameters: { max_new_tokens: 150, temperature: 0.8 },
       }),
     });
 
     console.log("📡 Status HTTP HuggingFace:", response.status);
-
     const text = await response.text();
     console.log("📄 Body brut HuggingFace:", text);
 
@@ -50,10 +49,9 @@ Réponds-lui comme un père bienveillant.
       data = JSON.parse(text);
     } catch (err) {
       console.error("❌ Erreur parsing JSON HuggingFace :", err);
-      return res.json({ reply: "Erreur serveur." });
+      return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
-    // Extraction du texte généré
     let reply = "Désolé mon petit poisson, je suis fatigué.";
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text.replace(prompt, "").trim();
