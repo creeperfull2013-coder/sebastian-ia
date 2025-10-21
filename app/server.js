@@ -1,4 +1,3 @@
-// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -6,13 +5,11 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// 🔒 Ton token Hugging Face est lu depuis les variables d'environnement
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français
 const MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1";
 
 // POST /chat
