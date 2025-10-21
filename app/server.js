@@ -1,4 +1,3 @@
-// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -11,20 +10,15 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🧠 Modèle accessible gratuitement
-const MODEL = "microsoft/DialoGPT-medium";
+const MODEL = "microsoft/DialoGPT-medium"; // modèle simple et stable
 
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "Bonjour";
 
-    const prompt = `
-Tu es **Sebastian Solace**, un père protecteur et empathique.
-Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
-Tu parles toujours en français, avec douceur et chaleur.
+    const prompt = `Tu es Sebastian Solace, un père protecteur et doux. Parle toujours en français.
 Message du joueur : "${userMessage}"
-Réponds-lui comme un père bienveillant.
-`;
+Réponds-lui avec tendresse.`;
 
     console.log("💬 Prompt envoyé :", prompt);
 
@@ -36,33 +30,36 @@ Réponds-lui comme un père bienveillant.
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 150, temperature: 0.8 },
+        parameters: { max_new_tokens: 100, temperature: 0.7 },
       }),
     });
 
     console.log("📡 Status HTTP HuggingFace:", response.status);
     const text = await response.text();
-    console.log("📄 Body brut HuggingFace:", text);
+    console.log("📄 Réponse brute :", text);
 
-    let data;
+    let reply = "Désolé, je n'ai pas compris.";
+
     try {
-      data = JSON.parse(text);
-    } catch (err) {
-      console.error("❌ Erreur parsing JSON HuggingFace :", err);
-      return res.json({ reply: "Erreur serveur (JSON)." });
-    }
+      const data = JSON.parse(text);
 
-    let reply = "Désolé mon petit poisson, je suis fatigué.";
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      reply = data[0].generated_text.replace(prompt, "").trim();
+      // différents formats possibles selon le modèle
+      if (Array.isArray(data) && data[0]?.generated_text) {
+        reply = data[0].generated_text.replace(prompt, "").trim();
+      } else if (data?.generated_text) {
+        reply = data.generated_text.trim();
+      } else if (typeof data === "string") {
+        reply = data.trim();
+      }
+    } catch (e) {
+      console.error("⚠️ Erreur parsing JSON :", e);
     }
 
     console.log("✅ Réponse générée :", reply);
     res.json({ reply });
-
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
-    res.json({ reply: "Erreur serveur." });
+    res.json({ reply: "Erreur serveur (exception)." });
   }
 });
 
