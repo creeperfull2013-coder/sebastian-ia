@@ -1,3 +1,4 @@
+// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -11,9 +12,8 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit et public
-// Ce modèle multilingue peut répondre en français
-const MODEL = "bigscience/bloomz-7b1-mt";
+// 🔹 Modèle français gratuit sur Hugging Face
+const MODEL = "HuggingFaceH4/starchat-alpha";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -31,7 +31,6 @@ Réponds-lui comme un père bienveillant.
 
     console.log("💡 Prompt généré :", prompt);
 
-    // Envoi au modèle Hugging Face
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
@@ -45,7 +44,6 @@ Réponds-lui comme un père bienveillant.
     });
 
     console.log("📡 Status HTTP HuggingFace :", response.status);
-
     const text = await response.text();
     console.log("📄 Body brut HuggingFace :", text);
 
@@ -59,8 +57,8 @@ Réponds-lui comme un père bienveillant.
 
     // Extraction du texte généré
     let reply = "Désolé, je n'ai pas compris.";
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      reply = data[0].generated_text.replace(prompt, "").trim();
+    if (data && data.hasOwnProperty("generated_text")) {
+      reply = data.generated_text.replace(prompt, "").trim();
     }
 
     console.log("✅ Réponse générée :", reply);
