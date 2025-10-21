@@ -1,9 +1,8 @@
 {
   "name": "sebastian-ia",
   "version": "1.0.0",
-  "description": "Serveur Node.js pour l'IA Sebastian Solace",
-  "main": "server.js",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
