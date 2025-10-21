@@ -8,21 +8,28 @@ app.use(bodyParser.json());
 
 // 🔒 Ton token Hugging Face est lu depuis les variables d'environnement
 const HF_TOKEN = process.env.HF_TOKEN;
+if (!HF_TOKEN) {
+  console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
+}
 
-// 🇫🇷 Modèle français plus fiable
+// 🔹 Modèle français
 const MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1";
 
+// POST /chat
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "Bonjour";
 
+    // Prompt pour Sebastian
     const prompt = `
-Tu es Sebastian Solace, un père protecteur et empathique.
+Tu es **Sebastian Solace**, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
 Message du joueur : "${userMessage}"
 Réponds-lui comme un père bienveillant.
 `;
+
+    console.log("💬 Prompt envoyé :", prompt);
 
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
@@ -32,23 +39,34 @@ Réponds-lui comme un père bienveillant.
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 150, temperature: 0.7 },
+        parameters: { max_new_tokens: 100, temperature: 0.7 },
       }),
     });
 
-    const data = await response.json();
-    console.log("Réponse HuggingFace:", data);
+    console.log("📡 Status HTTP HuggingFace:", response.status);
 
-    let reply = "Désolé, je n'ai pas compris.";
+    const text = await response.text();
+    console.log("📄 Body brut HuggingFace:", text);
 
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error("❌ Erreur parsing JSON HuggingFace :", err);
+      return res.json({ reply: "Erreur serveur." });
+    }
+
+    // Extraction du texte généré
+    let reply = "Désolé mon petit poisson, je suis fatigué.";
     if (Array.isArray(data) && data[0]?.generated_text) {
-      // Supprimer le prompt du texte généré
       reply = data[0].generated_text.replace(prompt, "").trim();
     }
 
+    console.log("✅ Réponse générée :", reply);
     res.json({ reply });
+
   } catch (err) {
-    console.error("Erreur serveur:", err);
+    console.error("❌ Erreur serveur :", err);
     res.json({ reply: "Erreur serveur." });
   }
 });
