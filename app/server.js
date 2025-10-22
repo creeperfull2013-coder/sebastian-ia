@@ -6,14 +6,12 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// 🔒 Ton token Hugging Face depuis Render
+// 🔒 Token Hugging Face (Render -> Environment -> HF_TOKEN)
 const HF_TOKEN = process.env.HF_TOKEN;
-if (!HF_TOKEN) {
-  console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
-}
+if (!HF_TOKEN) console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 
-// 🔹 Modèle français
-const MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
+// 🔹 Modèle français gratuit
+const MODEL = "HuggingFaceH4/zephyr-7b-beta";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -21,12 +19,13 @@ app.post("/chat", async (req, res) => {
     const userMessage = req.body.message || "Bonjour";
 
     const prompt = `
-Tu es **Sebastian Solace**, un père protecteur et empathique.
-Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
-Tu parles toujours en français, avec douceur et chaleur.
+Tu es **Sebastian Solace**, un père protecteur et affectueux.
+Tu t’adresses toujours en français et utilises parfois des surnoms tendres comme "petit poisson" ou "mon fils".
 Message du joueur : "${userMessage}"
-Réponds-lui comme un père bienveillant.
+Réponds comme un père bienveillant et chaleureux.
 `;
+
+    console.log("💬 Message :", userMessage);
 
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
@@ -40,12 +39,15 @@ Réponds-lui comme un père bienveillant.
       }),
     });
 
+    console.log("📡 Statut HF :", response.status);
     const text = await response.text();
+    console.log("📄 Réponse brute HF :", text);
+
     let data;
     try {
       data = JSON.parse(text);
     } catch (err) {
-      console.error("❌ Erreur parsing JSON HuggingFace :", err, text);
+      console.error("❌ Erreur JSON :", err);
       return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
@@ -55,7 +57,6 @@ Réponds-lui comme un père bienveillant.
     }
 
     res.json({ reply });
-
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
     res.json({ reply: "Erreur serveur." });
