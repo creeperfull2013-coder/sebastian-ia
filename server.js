@@ -1,4 +1,4 @@
-// app/server.js
+// server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -6,14 +6,14 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// 🔒 Token Hugging Face depuis Render
+// 🔒 Ton token Hugging Face depuis Render
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) {
-  console.error("❌ HF_TOKEN non défini !");
+  console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle francophone gratuit compatible
-const MODEL = "katanemo/Arch-Router-1.5B";
+// 🔹 Modèle français gratuit
+const MODEL = "ml6team/gelu-gpt2-small-french";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -40,7 +40,7 @@ Réponds-lui comme un père bienveillant.
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 200, temperature: 0.7 },
+        parameters: { max_new_tokens: 100, temperature: 0.7 },
       }),
     });
 
@@ -56,7 +56,6 @@ Réponds-lui comme un père bienveillant.
       return res.json({ reply: "Erreur serveur (JSON Hugging Face)." });
     }
 
-    // Extraction du texte généré
     let reply = "Désolé mon petit poisson, je n'ai pas compris.";
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text.replace(prompt, "").trim();
