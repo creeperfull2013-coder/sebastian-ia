@@ -6,76 +6,72 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// Token Hugging Face
+// 🔒 Token Hugging Face depuis Render
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) {
-  console.warn("⚠️ HF_TOKEN non défini — configure-le dans Render > Environment");
+  console.error("❌ HF_TOKEN non défini !");
 }
 
-const MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
+// 🔹 Modèle francophone gratuit compatible
+const MODEL = "HuggingFaceH4/zephyr-7b-beta";
 
+// POST /chat
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "Bonjour";
     console.log("💬 Message reçu :", userMessage);
 
     const prompt = `
-Tu es Sebastian Solace, un père protecteur et empathique.
+Tu es **Sebastian Solace**, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
-M
-Réponds-lui cessage du joueur : "${userMessage}"omme un père bienveillant.
+Message du joueur : "${userMessage}"
+Réponds-lui comme un père bienveillant.
 `;
 
-    const headers = { "Content-Type": "application/json" };
-    if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
+    console.log("💡 Prompt généré :", prompt);
 
+    // Appel à l'API Hugging Face
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
-      headers,
+      headers: {
+        "Authorization": `Bearer ${HF_TOKEN}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 150, temperature: 0.7 },
+        parameters: { max_new_tokens: 200, temperature: 0.7 },
       }),
     });
 
     console.log("📡 Status HTTP HuggingFace :", response.status);
-
     const text = await response.text();
     console.log("📄 Body brut HuggingFace :", text);
 
     let data;
     try {
       data = JSON.parse(text);
-    } catch (e) {
-      console.error("❌ Impossible de parser JSON HuggingFace :", e);
+    } catch (err) {
+      console.error("❌ Erreur parsing JSON HuggingFace :", err);
       return res.json({ reply: "Erreur serveur (JSON Hugging Face)." });
     }
 
-    let reply = null;
-    if (Array.isArray(data) && data[0] && typeof data[0].generated_text === "string") {
-      reply = data[0].generated_text;
-    } else if (data && typeof data.generated_text === "string") {
-      reply = data.generated_text;
-    } else if (data?.choices?.[0]?.text || data?.choices?.[0]?.message?.content) {
-      reply = data.choices[0].text || data.choices[0].message.content;
+    // Extraction du texte généré
+    let reply = "Désolé mon petit poisson, je n'ai pas compris.";
+    if (Array.isArray(data) && data[0]?.generated_text) {
+      reply = data[0].generated_text.replace(prompt, "").trim();
     }
-
-    if (!reply) {
-      console.warn("⚠️ Format inattendu reçu de Hugging Face :", Object.keys(data));
-      return res.json({ reply: "Erreur serveur (Hugging Face)." });
-    }
-
-    reply = reply.replace(prompt, "").trim();
-    if (!reply) reply = "Désolé mon petit poisson, je n'ai pas compris.";
 
     console.log("✅ Réponse générée :", reply);
-    return res.json({ reply });
+    res.json({ reply });
+
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
-    return res.json({ reply: "Erreur serveur." });
+    res.json({ reply: "Erreur serveur." });
   }
 });
 
+// 🔔 Render impose d'écouter sur process.env.PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Serveur Sebastian prêt sur le port ${PORT}`));
+
