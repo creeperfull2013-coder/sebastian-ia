@@ -1,3 +1,4 @@
+// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -5,8 +6,13 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
+// Token Hugging Face
 const HF_TOKEN = process.env.HF_TOKEN;
-const MODEL = "HuggingFaceH4/zephyr-7b-beta";
+if (!HF_TOKEN) {
+  console.warn("⚠️ HF_TOKEN non défini — configure-le dans Render > Environment");
+}
+
+const MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
 
 app.post("/chat", async (req, res) => {
   try {
@@ -14,14 +20,12 @@ app.post("/chat", async (req, res) => {
     console.log("💬 Message reçu :", userMessage);
 
     const prompt = `
-Tu es **Sebastian Solace**, un père protecteur et empathique.
+Tu es Sebastian Solace, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
-Message du joueur : "${userMessage}"
-Réponds-lui comme un père bienveillant.
+M
+Réponds-lui cessage du joueur : "${userMessage}"omme un père bienveillant.
 `;
-
-    console.log("💡 Prompt généré :", prompt);
 
     const headers = { "Content-Type": "application/json" };
     if (HF_TOKEN) headers["Authorization"] = `Bearer ${HF_TOKEN}`;
@@ -37,25 +41,39 @@ Réponds-lui comme un père bienveillant.
 
     console.log("📡 Status HTTP HuggingFace :", response.status);
 
-    if (response.status !== 200) {
-      const errorText = await response.text();
-      console.error("❌ Erreur HF :", errorText);
+    const text = await response.text();
+    console.log("📄 Body brut HuggingFace :", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("❌ Impossible de parser JSON HuggingFace :", e);
+      return res.json({ reply: "Erreur serveur (JSON Hugging Face)." });
+    }
+
+    let reply = null;
+    if (Array.isArray(data) && data[0] && typeof data[0].generated_text === "string") {
+      reply = data[0].generated_text;
+    } else if (data && typeof data.generated_text === "string") {
+      reply = data.generated_text;
+    } else if (data?.choices?.[0]?.text || data?.choices?.[0]?.message?.content) {
+      reply = data.choices[0].text || data.choices[0].message.content;
+    }
+
+    if (!reply) {
+      console.warn("⚠️ Format inattendu reçu de Hugging Face :", Object.keys(data));
       return res.json({ reply: "Erreur serveur (Hugging Face)." });
     }
 
-    const data = await response.json();
-
-    let reply = "Désolé mon petit poisson, je n'ai pas compris.";
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      reply = data[0].generated_text.replace(prompt, "").trim();
-    }
+    reply = reply.replace(prompt, "").trim();
+    if (!reply) reply = "Désolé mon petit poisson, je n'ai pas compris.";
 
     console.log("✅ Réponse générée :", reply);
-    res.json({ reply });
-
+    return res.json({ reply });
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
-    res.json({ reply: "Erreur serveur." });
+    return res.json({ reply: "Erreur serveur." });
   }
 });
 
