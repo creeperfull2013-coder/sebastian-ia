@@ -1,4 +1,4 @@
-// server.js
+// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -6,14 +6,13 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// 🔒 Ton token Hugging Face depuis Render / variables d'environnement
+// 🔒 Ton token Hugging Face depuis les variables d'environnement
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit
-// Exemple : Zephyr 7B beta (ou tout autre modèle gratuit francophone)
+// 🔹 Modèle gratuit et public francophone
 const MODEL = "HuggingFaceH4/zephyr-7b-beta";
 
 // POST /chat
@@ -22,8 +21,9 @@ app.post("/chat", async (req, res) => {
     const userMessage = req.body.message || "Bonjour";
     console.log("💬 Message reçu :", userMessage);
 
+    // Prompt pour Sebastian
     const prompt = `
-Tu es Sebastian Solace, un père protecteur et empathique.
+Tu es **Sebastian Solace**, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
 Message du joueur : "${userMessage}"
@@ -32,6 +32,7 @@ Réponds-lui comme un père bienveillant.
 
     console.log("💡 Prompt généré :", prompt);
 
+    // Appel à l'API Hugging Face
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
@@ -44,18 +45,20 @@ Réponds-lui comme un père bienveillant.
       }),
     });
 
-    // Vérifie si Hugging Face a renvoyé une erreur HTTP
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("❌ Erreur HF :", response.status, text);
-      return res.json({ reply: "Erreur serveur (Hugging Face)." });
+    console.log("📡 Status HTTP HuggingFace :", response.status);
+
+    const text = await response.text();
+    console.log("📄 Body brut HuggingFace :", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
-    // Parse le JSON sans crasher
-    const data = await response.json();
-
     // Extraction du texte généré
-    let reply = "Désolé mon petit poisson, je n'ai pas compris.";
+    let reply = "Désolé, je n'ai pas compris.";
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text.replace(prompt, "").trim();
     }
@@ -65,7 +68,7 @@ Réponds-lui comme un père bienveillant.
 
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
-    res.json({ reply: "Erreur serveur." });
+    res.json({ reply: "Erreur serveur (Hugging Face)." });
   }
 });
 
