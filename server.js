@@ -13,7 +13,7 @@ if (!HF_TOKEN) {
 }
 
 // 🔹 Modèle francophone gratuit compatible
-const MODEL = "HuggingFaceH4/zephyr-7b-beta";
+const MODEL = "katanemo/Arch-Router-1.5B";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
