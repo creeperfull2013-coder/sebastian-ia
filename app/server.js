@@ -1,4 +1,3 @@
-// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -6,12 +5,12 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// 🔒 Token Hugging Face (Render -> Environment -> HF_TOKEN)
+// 🔒 Token Hugging Face depuis Render
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 
-// 🔹 Modèle français gratuit
-const MODEL = "HuggingFaceH4/zephyr-7b-beta";
+// 🔹 Modèle compatible et plus léger
+const MODEL = "mosaicml/mpt-7b-instruct";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -20,12 +19,12 @@ app.post("/chat", async (req, res) => {
 
     const prompt = `
 Tu es **Sebastian Solace**, un père protecteur et affectueux.
-Tu t’adresses toujours en français et utilises parfois des surnoms tendres comme "petit poisson" ou "mon fils".
+Tu parles toujours en français, avec tendresse.
+Appelle souvent le joueur "mon fils" ou "petit poisson".
 Message du joueur : "${userMessage}"
-Réponds comme un père bienveillant et chaleureux.
-`;
+Réponds-lui avec douceur et chaleur.`;
 
-    console.log("💬 Message :", userMessage);
+    console.log("💬 Message reçu :", userMessage);
 
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
@@ -35,11 +34,11 @@ Réponds comme un père bienveillant et chaleureux.
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 150, temperature: 0.7 },
+        parameters: { max_new_tokens: 120, temperature: 0.7 },
       }),
     });
 
-    console.log("📡 Statut HF :", response.status);
+    console.log("📡 Statut HTTP HuggingFace :", response.status);
     const text = await response.text();
     console.log("📄 Réponse brute HF :", text);
 
@@ -47,7 +46,7 @@ Réponds comme un père bienveillant et chaleureux.
     try {
       data = JSON.parse(text);
     } catch (err) {
-      console.error("❌ Erreur JSON :", err);
+      console.error("❌ Erreur parsing JSON :", err);
       return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
@@ -56,13 +55,14 @@ Réponds comme un père bienveillant et chaleureux.
       reply = data[0].generated_text.replace(prompt, "").trim();
     }
 
+    console.log("✅ Réponse générée :", reply);
     res.json({ reply });
+
   } catch (err) {
     console.error("❌ Erreur serveur :", err);
     res.json({ reply: "Erreur serveur." });
   }
 });
 
-// 🔔 Render impose d'écouter sur process.env.PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Serveur Sebastian prêt sur le port ${PORT}`));
