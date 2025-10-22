@@ -12,8 +12,8 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit (OpenAssistant)
-const MODEL = "OpenAssistant/oasst-sft-1-pythia-12b";
+// 🔹 Modèle français Falcon-7B
+const MODEL = "tiiuae/falcon-7b-instruct";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -55,7 +55,6 @@ Réponds-lui comme un père bienveillant.
       return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
-    // Extraction du texte généré
     let reply = "Désolé, je n'ai pas compris.";
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text.replace(prompt, "").trim();
