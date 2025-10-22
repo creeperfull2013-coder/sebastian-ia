@@ -13,7 +13,7 @@ if (!HF_TOKEN) {
 }
 
 // 🔹 Modèle français gratuit
-const MODEL = "ml6team/gelu-gpt2-small-french";
+const MODEL = "moussaKam/barthez";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
