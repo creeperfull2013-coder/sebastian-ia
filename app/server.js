@@ -1,3 +1,4 @@
+// app/server.js
 import express from "express";
 import fetch from "node-fetch";
 import bodyParser from "body-parser";
@@ -11,9 +12,10 @@ if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit
-const MODEL = "OpenLLM-France/Lucie-7B-Instruct";
+// 🔹 Modèle français Falcon-7B
+const MODEL = "tiiuae/falcon-7b-instruct";
 
+// POST /chat
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "Bonjour";
@@ -48,19 +50,14 @@ Réponds-lui comme un père bienveillant.
     let data;
     try {
       data = JSON.parse(text);
-    } catch {
-      // Si le JSON n’est pas valide, on utilise le texte brut
-      console.warn("⚠️ Réponse non JSON, utilisation du texte brut");
-      return res.json({ reply: text || "Erreur serveur." });
+    } catch (err) {
+      console.error("❌ Erreur parsing JSON HuggingFace :", err);
+      return res.json({ reply: "Erreur serveur (JSON)." });
     }
 
     let reply = "Désolé, je n'ai pas compris.";
-    // Vérification si c'est un tableau avec generated_text
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text.replace(prompt, "").trim();
-    } else if (typeof data.generated_text === "string") {
-      // Cas objet avec generated_text direct
-      reply = data.generated_text.replace(prompt, "").trim();
     }
 
     console.log("✅ Réponse générée :", reply);
