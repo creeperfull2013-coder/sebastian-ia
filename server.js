@@ -1,65 +1,75 @@
+// server.js
 import express from "express";
 import fetch from "node-fetch";
+import bodyParser from "body-parser";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
 
-const PORT = process.env.PORT || 3000;
+// 🔒 Token Hugging Face depuis les variables d'environnement
 const HF_TOKEN = process.env.HF_TOKEN;
-
 if (!HF_TOKEN) {
-  console.error("❌ Erreur : le token Hugging Face (HF_TOKEN) n'est pas défini !");
-  process.exit(1);
+  console.error("❌ ERREUR : HF_TOKEN non défini !");
 }
 
-const MODEL_URL = "https://api-inference.huggingface.co/models/BSC-LT/salamandra-7b-instruct";
+// 🔹 Modèle français gratuit compatible avec Inference API
+const MODEL = "moussaKam/barthez"; // modèle français public
 
 app.post("/chat", async (req, res) => {
-  const message = req.body.message || "";
-  console.log("💬 Message reçu :", message);
+  try {
+    const userMessage = req.body.message || "Bonjour";
+    console.log("💬 Message reçu :", userMessage);
 
-  const prompt = `
+    const prompt = `
 Tu es Sebastian Solace, un père protecteur et empathique.
+Quand tu t’adresses au joueur, utilise des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
-Utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
-Message du joueur : "${message}"
+Message du joueur : "${userMessage}"
 Réponds-lui comme un père bienveillant.
 `;
 
-  try {
-    const response = await fetch(MODEL_URL, {
+    console.log("💡 Prompt généré :", prompt);
+
+    const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
+        "Authorization": `Bearer ${HF_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ inputs: prompt }),
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: { max_new_tokens: 100, temperature: 0.7 },
+      }),
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("❌ Erreur Hugging Face :", response.status, text);
-      return res.json({ reply: "Erreur serveur (Hugging Face)." });
-    }
+    console.log("📡 Status HTTP HuggingFace :", response.status);
+    const text = await response.text();
+    console.log("📄 Body brut HuggingFace :", text);
 
-    const data = await response.json();
-    console.log("✅ Réponse Hugging Face :", data);
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return res.json({ reply: "Erreur serveur (JSON Hugging Face)." });
+    }
 
     let reply = "Désolé mon petit poisson, je n'ai pas compris.";
-
     if (Array.isArray(data) && data[0]?.generated_text) {
-      reply = data[0].generated_text;
+      reply = data[0].generated_text.replace(prompt, "").trim();
     }
 
+    console.log("✅ Réponse générée :", reply);
     res.json({ reply });
-  } catch (error) {
-    console.error("💥 Erreur serveur :", error);
-    res.json({ reply: "Erreur serveur (JSON Hugging Face)." });
+
+  } catch (err) {
+    console.error("❌ Erreur serveur :", err);
+    res.json({ reply: "Erreur serveur." });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Serveur Sebastian prêt sur le port ${PORT}`);
-});
+// 🔔 Render impose d'écouter sur process.env.PORT
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Serveur Sebastian prêt sur le port ${PORT}`));
