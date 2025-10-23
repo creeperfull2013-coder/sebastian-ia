@@ -6,14 +6,15 @@ import bodyParser from "body-parser";
 const app = express();
 app.use(bodyParser.json());
 
-// 🔒 Ton token Hugging Face depuis Render
+// 🔒 Token Hugging Face depuis Render
 const HF_TOKEN = process.env.HF_TOKEN;
 if (!HF_TOKEN) {
   console.error("❌ ERREUR : HF_TOKEN n'est pas défini !");
 }
 
-// 🔹 Modèle français gratuit
-const MODEL = "moussaKam/barthez";
+// 🔹 Modèle gratuit compatible Inference API
+// Exemple : BSC-LT/ALIA-7B (français)
+const MODEL = "BSC-LT/ALIA-7B";
 
 // POST /chat
 app.post("/chat", async (req, res) => {
@@ -22,7 +23,7 @@ app.post("/chat", async (req, res) => {
     console.log("💬 Message reçu :", userMessage);
 
     const prompt = `
-Tu es **Sebastian Solace**, un père protecteur et empathique.
+Tu es Sebastian Solace, un père protecteur et empathique.
 Quand tu t’adresses au joueur, utilise souvent des termes affectueux comme "petit poisson", "trésor" ou "mon fils".
 Tu parles toujours en français, avec douceur et chaleur.
 Message du joueur : "${userMessage}"
@@ -31,7 +32,6 @@ Réponds-lui comme un père bienveillant.
 
     console.log("💡 Prompt généré :", prompt);
 
-    // Appel à l'API Hugging Face
     const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL}`, {
       method: "POST",
       headers: {
@@ -40,23 +40,21 @@ Réponds-lui comme un père bienveillant.
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: { max_new_tokens: 100, temperature: 0.7 },
+        parameters: { max_new_tokens: 150, temperature: 0.7 },
       }),
     });
 
     console.log("📡 Status HTTP HuggingFace :", response.status);
-    const text = await response.text();
-    console.log("📄 Body brut HuggingFace :", text);
 
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (err) {
-      console.error("❌ Erreur parsing JSON HuggingFace :", err);
-      return res.json({ reply: "Erreur serveur (JSON Hugging Face)." });
+    if (!response.ok) {
+      console.error("❌ Erreur HF :", response.status, await response.text());
+      return res.json({ reply: "Erreur serveur (Hugging Face)." });
     }
 
+    const data = await response.json();
+
     let reply = "Désolé mon petit poisson, je n'ai pas compris.";
+    // Extraction du texte généré
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text.replace(prompt, "").trim();
     }
